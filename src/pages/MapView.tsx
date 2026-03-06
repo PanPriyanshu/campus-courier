@@ -3,6 +3,8 @@ import L from "leaflet";
 import { subscribeToOrders, Order } from "@/lib/orders";
 import Layout from "@/components/Layout";
 import { useNavigate } from "react-router-dom";
+import { Crosshair } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import "leaflet/dist/leaflet.css";
 
 const greenIcon = new L.Icon({
@@ -24,8 +26,15 @@ const MapView = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const mapRef = useRef<L.Map | null>(null);
   const myLocationRef = useRef<L.Marker | null>(null);
+  const myLatLngRef = useRef<L.LatLngExpression | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  const recenter = () => {
+    if (mapRef.current && myLatLngRef.current) {
+      mapRef.current.setView(myLatLngRef.current, 15);
+    }
+  };
 
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
@@ -37,12 +46,13 @@ const MapView = () => {
 
     mapRef.current = map;
 
-    // Use watchPosition for better Capacitor/mobile compatibility
     const watchId = navigator.geolocation?.watchPosition(
       (pos) => {
         const latlng: L.LatLngExpression = [pos.coords.latitude, pos.coords.longitude];
-        map.setView(latlng, 15);
-        // Add or update blue dot
+        myLatLngRef.current = latlng;
+        if (!myLocationRef.current) {
+          map.setView(latlng, 15);
+        }
         if (myLocationRef.current) {
           myLocationRef.current.setLatLng(latlng);
         } else {
@@ -69,7 +79,6 @@ const MapView = () => {
     return unsub;
   }, []);
 
-  // Update markers when orders change
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -101,12 +110,19 @@ const MapView = () => {
         <h1 className="font-heading text-2xl font-bold text-foreground mb-1">Errand Map</h1>
         <p className="text-sm text-muted-foreground mb-4">See open errands near you</p>
       </div>
-      <div className="px-4 pb-4">
+      <div className="px-4 pb-4 relative">
         <div
           ref={mapContainerRef}
           className="rounded-xl overflow-hidden border border-border shadow-card"
           style={{ height: "60vh" }}
         />
+        <Button
+          size="icon"
+          onClick={recenter}
+          className="absolute bottom-8 right-8 z-[1000] h-10 w-10 rounded-full bg-card text-foreground border border-border shadow-lg hover:bg-muted"
+        >
+          <Crosshair className="h-5 w-5" />
+        </Button>
       </div>
     </Layout>
   );

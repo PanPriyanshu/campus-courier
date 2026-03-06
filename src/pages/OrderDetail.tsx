@@ -12,11 +12,27 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   MapPin, IndianRupee, User, Star, Send,
-  CheckCircle, Package, Truck, MessageCircle, ExternalLink,
+  CheckCircle, Package, Truck, ArrowLeft,
 } from "lucide-react";
 import { toast } from "sonner";
 
-const statusSteps = ["open", "accepted", "picked_up", "delivered", "confirmed"];
+const statusLabels: Record<string, string> = {
+  open: "Open",
+  accepted: "Accepted",
+  picked_up: "Picked up",
+  delivered: "Delivered – confirm receipt",
+  confirmed: "Confirmed ✅",
+  cancelled: "Cancelled",
+};
+
+const statusColors: Record<string, string> = {
+  open: "bg-primary/10 text-primary",
+  accepted: "bg-blue-100 text-blue-700",
+  picked_up: "bg-amber-100 text-amber-700",
+  delivered: "bg-emerald-100 text-emerald-700",
+  confirmed: "bg-muted text-muted-foreground",
+  cancelled: "bg-destructive/10 text-destructive",
+};
 
 const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -25,8 +41,7 @@ const OrderDetail = () => {
   const [order, setOrder] = useState<Order | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [msgText, setMsgText] = useState("");
-  const [rating, setRating] = useState(5);
-  const [showChat, setShowChat] = useState(false);
+  const [rating, setRating] = useState(0);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -44,8 +59,8 @@ const OrderDetail = () => {
 
   const isRequester = user?.uid === order.requester_id;
   const isDeliverer = user?.uid === order.deliverer_id;
-  const currentStep = statusSteps.indexOf(order.status);
   const totalAmount = order.item_budget + order.delivery_fee;
+  const timeAgo = getTimeAgo(order.created_at);
 
   const handleAccept = async () => {
     if (!user || !profile) return;
@@ -54,7 +69,7 @@ const OrderDetail = () => {
       deliverer_name: profile.displayName,
       status: "accepted",
     });
-    toast.success("Errand accepted! Contact the requester for details.");
+    toast.success("Errand accepted!");
   };
 
   const handleStatusUpdate = async (newStatus: Order["status"]) => {
@@ -65,10 +80,10 @@ const OrderDetail = () => {
   const handleConfirmDelivery = async () => {
     await updateOrder(order.id, { status: "confirmed" });
     if (order.deliverer_id) {
-      await creditDelivery(order.deliverer_id, totalAmount);
-      await rateUser(order.deliverer_id, rating);
+      await creditDelivery(order.deliverer_id, order.delivery_fee);
+      if (rating > 0) await rateUser(order.deliverer_id, rating);
     }
-    toast.success("Delivery confirmed! Deliverer has been credited.");
+    toast.success("Delivery confirmed! Deliverer credited.");
     await refreshProfile();
   };
 
@@ -78,79 +93,68 @@ const OrderDetail = () => {
     setMsgText("");
   };
 
-  const upiLink = `upi://pay?pa=&pn=${encodeURIComponent(order.deliverer_name || "Deliverer")}&am=${totalAmount}&cu=INR&tn=${encodeURIComponent(`Campus Errand: ${order.title}`)}`;
-
   return (
     <Layout>
-      <div className="px-4 pt-6 pb-4">
-        {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-start justify-between mb-2">
-            <h1 className="font-heading text-xl font-bold text-foreground">{order.title}</h1>
-            <Badge className={order.status === "open" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}>
-              {order.status}
+      <div className="px-4 pt-4 pb-4 space-y-4">
+        {/* Back */}
+        <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm text-muted-foreground">
+          <ArrowLeft className="h-4 w-4" /> Back
+        </button>
+
+        {/* Main card */}
+        <div className="bg-card rounded-xl border border-border p-5 space-y-4 shadow-card">
+          {/* Title + Status */}
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="font-heading text-xl font-bold text-foreground">{order.title}</h1>
+              <p className="text-sm text-muted-foreground">{order.description}</p>
+            </div>
+            <Badge className={`text-xs whitespace-nowrap ${statusColors[order.status] || ""}`}>
+              {order.status === "delivered" ? "📦 " : ""}{statusLabels[order.status]}
             </Badge>
           </div>
-          <p className="text-sm text-muted-foreground">{order.description}</p>
-        </div>
 
-        {/* Progress steps */}
-        <div className="flex items-center gap-1 mb-6 overflow-x-auto">
-          {statusSteps.map((step, i) => (
-            <div key={step} className="flex items-center gap-1">
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${i <= currentStep ? "gradient-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                {i < currentStep ? <CheckCircle className="h-4 w-4" /> : i + 1}
-              </div>
-              {i < statusSteps.length - 1 && (
-                <div className={`w-6 h-0.5 ${i < currentStep ? "bg-primary" : "bg-muted"}`} />
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Details */}
-        <div className="bg-card rounded-xl border border-border p-4 space-y-3 mb-4 shadow-card">
-          <div className="flex items-center gap-2 text-sm">
-            <MapPin className="h-4 w-4 text-primary" />
-            <span className="text-muted-foreground">Pickup:</span>
-            <span className="font-medium text-foreground">{order.pickup_location}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <MapPin className="h-4 w-4 text-secondary" />
-            <span className="text-muted-foreground">Deliver to:</span>
-            <span className="font-medium text-foreground">{order.delivery_location}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <User className="h-4 w-4 text-muted-foreground" />
-            <span className="text-muted-foreground">Posted by:</span>
-            <span className="font-medium text-foreground">{order.requester_name}</span>
-          </div>
-          {order.deliverer_name && (
+          {/* Locations */}
+          <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm">
-              <Truck className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground">Deliverer:</span>
-              <span className="font-medium text-foreground">{order.deliverer_name}</span>
+              <MapPin className="h-4 w-4 text-primary" />
+              <span className="font-medium">Pickup:</span>
+              <span className="text-foreground">{order.pickup_location}</span>
             </div>
-          )}
-        </div>
-
-        {/* Payment breakdown */}
-        <div className="bg-card rounded-xl border border-border p-4 mb-4 shadow-card">
-          <h3 className="font-heading font-semibold text-foreground mb-2">Payment</h3>
-          <div className="space-y-1 text-sm">
-            <div className="flex justify-between"><span className="text-muted-foreground">Item cost</span><span className="flex items-center"><IndianRupee className="h-3 w-3" />{order.item_budget}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Delivery tip</span><span className="flex items-center"><IndianRupee className="h-3 w-3" />{order.delivery_fee}</span></div>
-            <div className="flex justify-between font-semibold border-t border-border pt-1 mt-1"><span>Total</span><span className="flex items-center"><IndianRupee className="h-3 w-3" />{totalAmount}</span></div>
+            <div className="flex items-center gap-2 text-sm">
+              <MapPin className="h-4 w-4 text-destructive" />
+              <span className="font-medium">Deliver to:</span>
+              <span className="text-foreground">{order.delivery_location}</span>
+            </div>
           </div>
-          {isRequester && order.status === "delivered" && (
-            <a href={upiLink} className="mt-3 inline-flex items-center gap-1 text-sm text-primary font-medium">
-              <ExternalLink className="h-3 w-3" /> Pay via UPI
-            </a>
-          )}
-        </div>
 
-        {/* Actions */}
-        <div className="space-y-2 mb-4">
+          {/* Payment */}
+          <div className="bg-primary/5 rounded-lg p-3">
+            <p className="text-2xl font-bold flex items-center gap-1 text-foreground">
+              <span>₹</span> {totalAmount}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Item: ₹{order.item_budget} + Tip: ₹{order.delivery_fee}
+            </p>
+          </div>
+
+          {/* People */}
+          <div className="space-y-1 text-sm">
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <span>Posted by <strong>{order.requester_name}</strong></span>
+            </div>
+            {order.deliverer_name && (
+              <div className="flex items-center gap-2">
+                <Truck className="h-4 w-4 text-muted-foreground" />
+                <span>Delivering: <strong>{order.deliverer_name}</strong></span>
+              </div>
+            )}
+          </div>
+
+          <p className="text-xs text-muted-foreground">Posted {timeAgo}</p>
+
+          {/* Actions */}
           {order.status === "open" && !isRequester && (
             <Button onClick={handleAccept} className="w-full gradient-primary text-primary-foreground font-semibold">
               <Package className="h-4 w-4 mr-1" /> Accept Errand
@@ -166,65 +170,70 @@ const OrderDetail = () => {
               Mark as Delivered
             </Button>
           )}
+
+          {/* Confirm + Rate */}
           {isRequester && order.status === "delivered" && (
             <div className="space-y-3">
               <div>
-                <p className="text-sm font-medium text-foreground mb-1">Rate deliverer</p>
+                <p className="text-sm font-medium text-foreground mb-1">Rate the deliverer:</p>
                 <div className="flex gap-1">
                   {[1, 2, 3, 4, 5].map((s) => (
                     <button key={s} onClick={() => setRating(s)}>
-                      <Star className={`h-6 w-6 ${s <= rating ? "text-secondary fill-secondary" : "text-muted"}`} />
+                      <Star className={`h-7 w-7 ${s <= rating ? "text-secondary fill-secondary" : "text-muted-foreground"}`} />
                     </button>
                   ))}
                 </div>
               </div>
-              <Button onClick={handleConfirmDelivery} className="w-full gradient-primary text-primary-foreground font-semibold">
-                <CheckCircle className="h-4 w-4 mr-1" /> Confirm Delivery
+              <Button onClick={handleConfirmDelivery} className="w-full gradient-primary text-primary-foreground font-semibold text-base py-5">
+                <CheckCircle className="h-5 w-5 mr-2" /> Confirm Receipt & Credit ₹{order.delivery_fee}
               </Button>
             </div>
           )}
         </div>
 
-        {/* Chat toggle */}
+        {/* Chat - always visible for participants after acceptance */}
         {(isRequester || isDeliverer) && order.status !== "open" && (
-          <>
-            <Button variant="outline" onClick={() => setShowChat(!showChat)} className="w-full mb-3">
-              <MessageCircle className="h-4 w-4 mr-1" /> {showChat ? "Hide Chat" : "Open Chat"}
-            </Button>
-
-            {showChat && (
-              <div className="bg-card rounded-xl border border-border overflow-hidden shadow-card">
-                <div className="h-60 overflow-y-auto p-3 space-y-2">
-                  {messages.length === 0 && <p className="text-center text-sm text-muted-foreground py-8">No messages yet</p>}
-                  {messages.map((m) => (
-                    <div key={m.id} className={`flex ${m.sender_id === user?.uid ? "justify-end" : "justify-start"}`}>
-                      <div className={`max-w-[75%] rounded-xl px-3 py-2 text-sm ${m.sender_id === user?.uid ? "gradient-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
-                        <p className="font-medium text-[10px] opacity-70 mb-0.5">{m.sender_name}</p>
-                        <p>{m.text}</p>
-                      </div>
-                    </div>
-                  ))}
-                  <div ref={chatEndRef} />
+          <div className="bg-card rounded-xl border border-border overflow-hidden shadow-card">
+            <h3 className="font-heading font-semibold text-foreground px-4 pt-4 pb-2">Chat</h3>
+            <div className="h-48 overflow-y-auto px-4 space-y-2">
+              {messages.length === 0 && <p className="text-center text-sm text-muted-foreground py-8">No messages yet</p>}
+              {messages.map((m) => (
+                <div key={m.id} className={`flex ${m.sender_id === user?.uid ? "justify-end" : "justify-start"}`}>
+                  <div className={`max-w-[75%] rounded-xl px-3 py-2 text-sm ${m.sender_id === user?.uid ? "gradient-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
+                    <p>{m.text}</p>
+                  </div>
                 </div>
-                <div className="border-t border-border p-2 flex gap-2">
-                  <Input
-                    placeholder="Type a message..."
-                    value={msgText}
-                    onChange={(e) => setMsgText(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-                    className="flex-1"
-                  />
-                  <Button size="icon" onClick={handleSendMessage} className="gradient-primary text-primary-foreground">
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </>
+              ))}
+              <div ref={chatEndRef} />
+            </div>
+            <div className="border-t border-border p-3 flex gap-2">
+              <Input
+                placeholder="Type a message..."
+                value={msgText}
+                onChange={(e) => setMsgText(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+                className="flex-1"
+              />
+              <Button size="icon" onClick={handleSendMessage} className="gradient-primary text-primary-foreground rounded-full">
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         )}
       </div>
     </Layout>
   );
 };
+
+function getTimeAgo(ts: number): string {
+  const diff = Date.now() - ts;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} minute${mins > 1 ? "s" : ""} ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hour${hrs > 1 ? "s" : ""} ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days} day${days > 1 ? "s" : ""} ago`;
+}
 
 export default OrderDetail;
