@@ -5,7 +5,18 @@ import Layout from "@/components/Layout";
 import OrderCard from "@/components/OrderCard";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, SlidersHorizontal } from "lucide-react";
+import { Search } from "lucide-react";
+
+const CATEGORY_EMOJIS: Record<string, string> = {
+  "Stationery": "✏️",
+  "Food & Snacks": "📬",
+  "Medicine": "💊",
+  "Electronics": "🔌",
+  "Groceries": "🛒",
+  "Documents": "📄",
+  "Clothing": "👕",
+  "Other": "📦",
+};
 
 const Feed = () => {
   const { user } = useAuth();
@@ -28,8 +39,7 @@ const Feed = () => {
   return (
     <Layout>
       <div className="px-4 pt-6 pb-4">
-        <h1 className="font-heading text-2xl font-bold text-foreground mb-1">Open Errands</h1>
-        <p className="text-sm text-muted-foreground mb-4">Browse and accept errands near you</p>
+        <h1 className="font-heading text-2xl font-bold text-foreground mb-3">Open Errands</h1>
 
         {/* Search */}
         <div className="relative mb-4">
@@ -48,7 +58,7 @@ const Feed = () => {
             className={`cursor-pointer whitespace-nowrap ${!selectedCategory ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
             onClick={() => setSelectedCategory(null)}
           >
-            All
+            🔥 All
           </Badge>
           {CATEGORIES.map((cat) => (
             <Badge
@@ -56,7 +66,7 @@ const Feed = () => {
               className={`cursor-pointer whitespace-nowrap ${selectedCategory === cat ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
               onClick={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
             >
-              {cat}
+              {CATEGORY_EMOJIS[cat] || "📦"} {cat.replace(" & Snacks", "")}
             </Badge>
           ))}
         </div>
@@ -66,9 +76,8 @@ const Feed = () => {
       <div className="px-4 space-y-3 pb-4">
         {filtered.length === 0 ? (
           <div className="text-center py-16">
-            <SlidersHorizontal className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
-            <p className="text-muted-foreground">No open errands right now</p>
-            <p className="text-sm text-muted-foreground/60">Check back soon or post one!</p>
+            <p className="text-4xl mb-3">📭</p>
+            <p className="text-muted-foreground">No open errands yet. Be the first to post!</p>
           </div>
         ) : (
           filtered.map((order) => <OrderCard key={order.id} order={order} />)
