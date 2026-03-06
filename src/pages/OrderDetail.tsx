@@ -20,7 +20,7 @@ const statusSteps = ["open", "accepted", "picked_up", "delivered", "confirmed"];
 
 const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [order, setOrder] = useState<Order | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -69,6 +69,7 @@ const OrderDetail = () => {
       await rateUser(order.deliverer_id, rating);
     }
     toast.success("Delivery confirmed! Deliverer has been credited.");
+    await refreshProfile();
   };
 
   const handleSendMessage = async () => {
