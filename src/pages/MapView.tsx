@@ -25,7 +25,6 @@ const MapView = () => {
   const mapRef = useRef<L.Map | null>(null);
   const myLocationRef = useRef<L.Marker | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapContainerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
