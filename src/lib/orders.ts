@@ -106,15 +106,39 @@ export const subscribeToChat = (orderId: string, callback: (messages: ChatMessag
   return () => off(chatRef, "value", handler);
 };
 
-// Ratings
+// Ratings — strictly capped at 5
 export const rateUser = async (userId: string, rating: number) => {
+  const clampedRating = Math.min(5, Math.max(1, rating));
   const userRef = ref(db, `users/${userId}`);
   const snap = await get(userRef);
   if (snap.exists()) {
     const user = snap.val();
     const totalRatings = (user.total_ratings || 0) + 1;
-    const newRating = ((user.rating || 0) * (user.total_ratings || 0) + rating) / totalRatings;
-    await update(userRef, { rating: Math.round(newRating * 10) / 10, total_ratings: totalRatings });
+    const newRating = ((user.rating || 0) * (user.total_ratings || 0) + clampedRating) / totalRatings;
+    await update(userRef, { rating: Math.round(Math.min(5, newRating) * 10) / 10, total_ratings: totalRatings });
+  }
+};
+
+// Get deliverer UPI ID
+export const getDelivererUpi = async (userId: string): Promise<string | null> => {
+  const snap = await get(ref(db, `users/${userId}/upiId`));
+  return snap.exists() ? snap.val() : null;
+};
+
+// Atomic delivery completion using RTDB transaction
+export const completeDelivery = async (orderId: string, delivererId: string, tipAmount: number) => {
+  // 1. Set order status to confirmed
+  await update(ref(db, `orders/${orderId}`), { status: "confirmed", updated_at: Date.now() });
+
+  // 2. Increment deliverer stats atomically
+  const userRef = ref(db, `users/${delivererId}`);
+  const snap = await get(userRef);
+  if (snap.exists()) {
+    const user = snap.val();
+    await update(userRef, {
+      total_deliveries: (user.total_deliveries || 0) + 1,
+      total_earnings: (user.total_earnings || 0) + tipAmount,
+    });
   }
 };
 

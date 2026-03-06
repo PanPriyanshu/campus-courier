@@ -4,15 +4,15 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   subscribeToOrder, updateOrder, Order,
   subscribeToChat, sendMessage, ChatMessage,
-  rateUser, creditDelivery,
+  rateUser, completeDelivery, getDelivererUpi,
 } from "@/lib/orders";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  MapPin, IndianRupee, User, Star, Send,
-  CheckCircle, Package, Truck, ArrowLeft,
+  MapPin, User, Star, Send,
+  CheckCircle, Package, Truck, ArrowLeft, CreditCard,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -42,6 +42,7 @@ const OrderDetail = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [msgText, setMsgText] = useState("");
   const [rating, setRating] = useState(0);
+  const [paymentSent, setPaymentSent] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -77,14 +78,33 @@ const OrderDetail = () => {
     toast.success(`Status updated to ${newStatus}`);
   };
 
-  const handleConfirmDelivery = async () => {
-    await updateOrder(order.id, { status: "confirmed" });
-    if (order.deliverer_id) {
-      await creditDelivery(order.deliverer_id, order.delivery_fee);
-      if (rating > 0) await rateUser(order.deliverer_id, rating);
+  const handlePayAndConfirm = async () => {
+    if (!order.deliverer_id) return;
+    try {
+      const delivererUpi = await getDelivererUpi(order.deliverer_id);
+      if (!delivererUpi) {
+        toast.error("Deliverer has not set their UPI ID yet.");
+        return;
+      }
+      const upiUri = `upi://pay?pa=${encodeURIComponent(delivererUpi)}&pn=${encodeURIComponent(order.deliverer_name || "Deliverer")}&am=${totalAmount}&cu=INR&tn=Order_${order.id}`;
+      window.location.href = upiUri;
+      // Show confirm button after redirect
+      setTimeout(() => setPaymentSent(true), 1000);
+    } catch {
+      toast.error("Failed to initiate payment.");
     }
-    toast.success("Delivery confirmed! Deliverer credited.");
-    await refreshProfile();
+  };
+
+  const handleConfirmCompletion = async () => {
+    if (!order.deliverer_id || !id) return;
+    try {
+      await completeDelivery(id, order.deliverer_id, order.delivery_fee);
+      if (rating > 0) await rateUser(order.deliverer_id, rating);
+      toast.success("Delivery confirmed! Deliverer credited.");
+      await refreshProfile();
+    } catch {
+      toast.error("Failed to confirm delivery.");
+    }
   };
 
   const handleSendMessage = async () => {
@@ -171,27 +191,35 @@ const OrderDetail = () => {
             </Button>
           )}
 
-          {/* Confirm + Rate */}
+          {/* Pay & Confirm flow for requester */}
           {isRequester && order.status === "delivered" && (
             <div className="space-y-3">
+              {/* Rating */}
               <div>
                 <p className="text-sm font-medium text-foreground mb-1">Rate the deliverer:</p>
                 <div className="flex gap-1">
                   {[1, 2, 3, 4, 5].map((s) => (
                     <button key={s} onClick={() => setRating(s)}>
-                      <Star className={`h-7 w-7 ${s <= rating ? "text-secondary fill-secondary" : "text-muted-foreground"}`} />
+                      <Star className={`h-7 w-7 transition-colors ${s <= rating ? "text-secondary fill-secondary" : "text-muted-foreground"}`} />
                     </button>
                   ))}
                 </div>
               </div>
-              <Button onClick={handleConfirmDelivery} className="w-full gradient-primary text-primary-foreground font-semibold text-base py-5">
-                <CheckCircle className="h-5 w-5 mr-2" /> Confirm Receipt & Credit ₹{order.delivery_fee}
-              </Button>
+
+              {!paymentSent ? (
+                <Button onClick={handlePayAndConfirm} className="w-full gradient-primary text-primary-foreground font-semibold text-base py-5">
+                  <CreditCard className="h-5 w-5 mr-2" /> Pay ₹{totalAmount} & Confirm
+                </Button>
+              ) : (
+                <Button onClick={handleConfirmCompletion} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-base py-5">
+                  <CheckCircle className="h-5 w-5 mr-2" /> Payment Sent? Confirm Completion
+                </Button>
+              )}
             </div>
           )}
         </div>
 
-        {/* Chat - always visible for participants after acceptance */}
+        {/* Chat */}
         {(isRequester || isDeliverer) && order.status !== "open" && (
           <div className="bg-card rounded-xl border border-border overflow-hidden shadow-card">
             <h3 className="font-heading font-semibold text-foreground px-4 pt-4 pb-2">Chat</h3>
