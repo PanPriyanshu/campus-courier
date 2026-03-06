@@ -7,7 +7,7 @@ import {
   signOut,
   updateProfile,
 } from "firebase/auth";
-import { ref, set, get, update } from "firebase/database";
+import { ref, set, get, update, onValue, off } from "firebase/database";
 import { auth, db } from "@/lib/firebase";
 
 export interface UserProfile {
@@ -18,6 +18,7 @@ export interface UserProfile {
   phone?: string;
   hostel?: string;
   college?: string;
+  upiId?: string;
   rating: number;
   total_ratings: number;
   total_deliveries: number;
@@ -50,10 +51,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (uid: string) => {
-    const snap = await get(ref(db, `users/${uid}`));
+    const userRef = ref(db, `users/${uid}`);
+    const snap = await get(userRef);
     if (snap.exists()) {
       setProfile(snap.val() as UserProfile);
     }
+    // Subscribe to realtime updates for reactive stats
+    const handler = (snapshot: import("firebase/database").DataSnapshot) => {
+      if (snapshot.exists()) {
+        setProfile(snapshot.val() as UserProfile);
+      }
+    };
+    onValue(userRef, handler);
+    return () => off(userRef, "value", handler);
   };
 
   const refreshProfile = async () => {
@@ -61,16 +71,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+    let unsubProfile: (() => void) | undefined;
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
-        await fetchProfile(u.uid);
+        unsubProfile = await fetchProfile(u.uid);
       } else {
         setProfile(null);
       }
       setLoading(false);
     });
-    return unsub;
+    return () => {
+      unsub();
+      unsubProfile?.();
+    };
   }, []);
 
   const signup = async (email: string, password: string, name: string) => {
