@@ -13,9 +13,18 @@ const greenIcon = new L.Icon({
   popupAnchor: [1, -34],
 });
 
+const blueDotIcon = L.divIcon({
+  className: "",
+  html: `<div style="width:16px;height:16px;background:#4285F4;border:3px solid white;border-radius:50%;box-shadow:0 0 6px rgba(66,133,244,0.6);"></div>`,
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
+});
+
 const MapView = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const mapRef = useRef<L.Map | null>(null);
+  const myLocationRef = useRef<L.Marker | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
@@ -32,9 +41,16 @@ const MapView = () => {
     // Use watchPosition for better Capacitor/mobile compatibility
     const watchId = navigator.geolocation?.watchPosition(
       (pos) => {
-        map.setView([pos.coords.latitude, pos.coords.longitude], 15);
-        // Stop watching after first successful fix
-        if (watchId !== undefined) navigator.geolocation.clearWatch(watchId);
+        const latlng: L.LatLngExpression = [pos.coords.latitude, pos.coords.longitude];
+        map.setView(latlng, 15);
+        // Add or update blue dot
+        if (myLocationRef.current) {
+          myLocationRef.current.setLatLng(latlng);
+        } else {
+          myLocationRef.current = L.marker(latlng, { icon: blueDotIcon, zIndexOffset: 1000 })
+            .addTo(map)
+            .bindPopup("You are here");
+        }
       },
       (err) => {
         console.warn("Geolocation error:", err.message);
