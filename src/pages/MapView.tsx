@@ -29,11 +29,21 @@ const MapView = () => {
 
     mapRef.current = map;
 
-    navigator.geolocation?.getCurrentPosition((pos) => {
-      map.setView([pos.coords.latitude, pos.coords.longitude], 14);
-    });
+    // Use watchPosition for better Capacitor/mobile compatibility
+    const watchId = navigator.geolocation?.watchPosition(
+      (pos) => {
+        map.setView([pos.coords.latitude, pos.coords.longitude], 15);
+        // Stop watching after first successful fix
+        if (watchId !== undefined) navigator.geolocation.clearWatch(watchId);
+      },
+      (err) => {
+        console.warn("Geolocation error:", err.message);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
 
     return () => {
+      if (watchId !== undefined) navigator.geolocation?.clearWatch(watchId);
       map.remove();
       mapRef.current = null;
     };
