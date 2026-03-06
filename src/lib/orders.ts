@@ -32,15 +32,19 @@ export const CATEGORIES = [
 export const createOrder = async (order: Omit<Order, "id" | "created_at" | "updated_at" | "status">) => {
   const ordersRef = ref(db, "orders");
   const newRef = push(ordersRef);
-  const data: Order = {
-    ...order,
+  // Strip undefined values to avoid Firebase errors
+  const clean = Object.fromEntries(
+    Object.entries(order).filter(([, v]) => v !== undefined)
+  );
+  const data = {
+    ...clean,
     id: newRef.key!,
-    status: "open",
+    status: "open" as const,
     created_at: Date.now(),
     updated_at: Date.now(),
   };
   await set(newRef, data);
-  return data;
+  return data as Order;
 };
 
 export const updateOrder = async (orderId: string, data: Partial<Order>) => {
