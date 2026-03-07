@@ -83,7 +83,6 @@ const MapView = () => {
     if (!mapContainerRef.current || mapRef.current) return;
 
     const map = L.map(mapContainerRef.current, {
-      tap: true,          // better touch on Capacitor
       dragging: true,
       touchZoom: true,
     }).setView([20.5937, 78.9629], 5);
