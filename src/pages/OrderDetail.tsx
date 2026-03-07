@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   subscribeToOrder, updateOrder, Order,
   subscribeToChat, sendMessage, ChatMessage,
-  rateUser, completeDelivery, getDelivererUpi,
+  rateUser, completeDelivery, getDelivererUpi, getDelivererBankingName,
 } from "@/lib/orders";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,7 @@ const OrderDetail = () => {
   const [rating, setRating] = useState(0);
   const [paymentSent, setPaymentSent] = useState(false);
   const [delivererUpi, setDelivererUpi] = useState<string | null>(null);
+  const [delivererBankingName, setDelivererBankingName] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -92,7 +93,8 @@ const OrderDetail = () => {
       toast.error("Deliverer has not set their UPI ID yet.");
       return;
     }
-    const upiUri = `upi://pay?pa=${encodeURIComponent(delivererUpi)}&pn=${encodeURIComponent(order.deliverer_name || "Deliverer")}&am=${totalAmount}&cu=INR`;
+    const payeeName = delivererBankingName || order.deliverer_name || "Deliverer";
+    const upiUri = `upi://pay?pa=${encodeURIComponent(delivererUpi)}&pn=${encodeURIComponent(payeeName)}&am=${totalAmount}&cu=INR`;
     window.location.href = upiUri;
     setTimeout(() => setPaymentSent(true), 1000);
   };

@@ -19,6 +19,7 @@ export interface UserProfile {
   hostel?: string;
   college?: string;
   upiId?: string;
+  bankingName?: string;
   rating: number;
   total_ratings: number;
   total_deliveries: number;
