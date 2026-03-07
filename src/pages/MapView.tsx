@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import L from "leaflet";
 import { subscribeToOrders, Order } from "@/lib/orders";
 import Layout from "@/components/Layout";
@@ -22,6 +22,34 @@ const blueDotIcon = L.divIcon({
   iconAnchor: [8, 8],
 });
 
+/* Try Capacitor Geolocation first, fall back to browser API */
+async function getCapacitorGeolocation(): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const { Geolocation } = await import("@capacitor/geolocation");
+    const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true });
+    return { lat: pos.coords.latitude, lng: pos.coords.longitude };
+  } catch {
+    return null;
+  }
+}
+
+async function watchCapacitorGeolocation(
+  cb: (lat: number, lng: number) => void
+): Promise<string | null> {
+  try {
+    const { Geolocation } = await import("@capacitor/geolocation");
+    const id = await Geolocation.watchPosition(
+      { enableHighAccuracy: true },
+      (pos, err) => {
+        if (pos) cb(pos.coords.latitude, pos.coords.longitude);
+      }
+    );
+    return id;
+  } catch {
+    return null;
+  }
+}
+
 const MapView = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const mapRef = useRef<L.Map | null>(null);
@@ -36,43 +64,65 @@ const MapView = () => {
     }
   };
 
+  const updateLocation = useCallback((lat: number, lng: number) => {
+    const map = mapRef.current;
+    if (!map) return;
+    const latlng: L.LatLngExpression = [lat, lng];
+    myLatLngRef.current = latlng;
+    if (!myLocationRef.current) {
+      map.setView(latlng, 15);
+      myLocationRef.current = L.marker(latlng, { icon: blueDotIcon, zIndexOffset: 1000 })
+        .addTo(map)
+        .bindPopup("You are here");
+    } else {
+      myLocationRef.current.setLatLng(latlng);
+    }
+  }, []);
+
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
-    const map = L.map(mapContainerRef.current).setView([20.5937, 78.9629], 5);
+    const map = L.map(mapContainerRef.current, {
+      dragging: true,
+      touchZoom: true,
+    }).setView([20.5937, 78.9629], 5);
+
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(map);
 
     mapRef.current = map;
 
-    const watchId = navigator.geolocation?.watchPosition(
-      (pos) => {
-        const latlng: L.LatLngExpression = [pos.coords.latitude, pos.coords.longitude];
-        myLatLngRef.current = latlng;
-        if (!myLocationRef.current) {
-          map.setView(latlng, 15);
-        }
-        if (myLocationRef.current) {
-          myLocationRef.current.setLatLng(latlng);
-        } else {
-          myLocationRef.current = L.marker(latlng, { icon: blueDotIcon, zIndexOffset: 1000 })
-            .addTo(map)
-            .bindPopup("You are here");
-        }
-      },
-      (err) => {
-        console.warn("Geolocation error:", err.message);
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
+    // Force Leaflet to recalculate size after render (fixes grey tiles in Capacitor WebView)
+    setTimeout(() => map.invalidateSize(), 300);
+
+    let browserWatchId: number | undefined;
+    let capWatchId: string | null = null;
+
+    // Try Capacitor geolocation, fall back to browser
+    (async () => {
+      capWatchId = await watchCapacitorGeolocation(updateLocation);
+      if (!capWatchId) {
+        // Fallback: browser geolocation
+        browserWatchId = navigator.geolocation?.watchPosition(
+          (pos) => updateLocation(pos.coords.latitude, pos.coords.longitude),
+          (err) => console.warn("Geolocation error:", err.message),
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+      }
+    })();
 
     return () => {
-      if (watchId !== undefined) navigator.geolocation?.clearWatch(watchId);
+      if (browserWatchId !== undefined) navigator.geolocation?.clearWatch(browserWatchId);
+      if (capWatchId) {
+        import("@capacitor/geolocation").then(({ Geolocation }) =>
+          Geolocation.clearWatch({ id: capWatchId! })
+        ).catch(() => {});
+      }
       map.remove();
       mapRef.current = null;
     };
-  }, []);
+  }, [updateLocation]);
 
   useEffect(() => {
     const unsub = subscribeToOrders(setOrders);
