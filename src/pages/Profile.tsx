@@ -16,9 +16,10 @@ const Profile = () => {
   const [college, setCollege] = useState(profile?.college || "");
   const [phone, setPhone] = useState(profile?.phone || "");
   const [upiId, setUpiId] = useState(profile?.upiId || "");
+  const [bankingName, setBankingName] = useState(profile?.bankingName || "");
 
   const handleSave = async () => {
-    await updateUserProfile({ hostel, college, phone, upiId });
+    await updateUserProfile({ hostel, college, phone, upiId, bankingName });
     setEditing(false);
     toast.success("Profile updated!");
   };

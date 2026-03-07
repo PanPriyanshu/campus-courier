@@ -125,6 +125,11 @@ export const getDelivererUpi = async (userId: string): Promise<string | null> =>
   return snap.exists() ? snap.val() : null;
 };
 
+export const getDelivererBankingName = async (userId: string): Promise<string | null> => {
+  const snap = await get(ref(db, `users/${userId}/bankingName`));
+  return snap.exists() ? snap.val() : null;
+};
+
 // Atomic delivery completion using RTDB transaction
 export const completeDelivery = async (orderId: string, delivererId: string, tipAmount: number) => {
   // 1. Set order status to confirmed

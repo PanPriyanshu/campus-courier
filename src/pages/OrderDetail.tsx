@@ -57,6 +57,7 @@ const OrderDetail = () => {
   useEffect(() => {
     if (order?.status === "delivered" && order.deliverer_id && isRequester) {
       getDelivererUpi(order.deliverer_id).then(setDelivererUpi).catch(() => setDelivererUpi(null));
+      getDelivererBankingName(order.deliverer_id).then(setDelivererBankingName).catch(() => setDelivererBankingName(null));
     }
   }, [order?.status, order?.deliverer_id]);
 
@@ -204,7 +205,7 @@ const OrderDetail = () => {
               {/* Recipient info */}
               <div className="bg-muted/50 rounded-lg p-3 space-y-1">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Pay to</p>
-                <p className="text-sm font-semibold text-foreground">{order.deliverer_name}</p>
+                <p className="text-sm font-semibold text-foreground">{delivererBankingName || order.deliverer_name}</p>
                 {delivererUpi ? (
                   <p className="text-sm text-muted-foreground font-mono">{delivererUpi}</p>
                 ) : (
