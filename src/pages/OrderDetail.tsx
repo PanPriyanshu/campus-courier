@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   MapPin, User, Star, Send,
-  CheckCircle, Package, Truck, ArrowLeft, CreditCard,
+  CheckCircle, Package, Truck, ArrowLeft, CreditCard, Copy,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -43,6 +43,7 @@ const OrderDetail = () => {
   const [msgText, setMsgText] = useState("");
   const [rating, setRating] = useState(0);
   const [paymentSent, setPaymentSent] = useState(false);
+  const [delivererUpi, setDelivererUpi] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -51,6 +52,13 @@ const OrderDetail = () => {
     const unsub2 = subscribeToChat(id, setMessages);
     return () => { unsub1(); unsub2(); };
   }, [id]);
+
+  // Fetch deliverer UPI when order is delivered
+  useEffect(() => {
+    if (order?.status === "delivered" && order.deliverer_id && isRequester) {
+      getDelivererUpi(order.deliverer_id).then(setDelivererUpi).catch(() => setDelivererUpi(null));
+    }
+  }, [order?.status, order?.deliverer_id]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -78,21 +86,20 @@ const OrderDetail = () => {
     toast.success(`Status updated to ${newStatus}`);
   };
 
-  const handlePayAndConfirm = async () => {
-    if (!order.deliverer_id) return;
-    try {
-      const delivererUpi = await getDelivererUpi(order.deliverer_id);
-      if (!delivererUpi) {
-        toast.error("Deliverer has not set their UPI ID yet.");
-        return;
-      }
-      const upiUri = `upi://pay?pa=${encodeURIComponent(delivererUpi)}&pn=${encodeURIComponent(order.deliverer_name || "Deliverer")}&am=${totalAmount}&cu=INR&tn=Order_${order.id}`;
-      window.location.href = upiUri;
-      // Show confirm button after redirect
-      setTimeout(() => setPaymentSent(true), 1000);
-    } catch {
-      toast.error("Failed to initiate payment.");
+  const handlePayViaApp = () => {
+    if (!delivererUpi) {
+      toast.error("Deliverer has not set their UPI ID yet.");
+      return;
     }
+    const upiUri = `upi://pay?pa=${encodeURIComponent(delivererUpi)}&pn=${encodeURIComponent(order.deliverer_name || "Deliverer")}&am=${totalAmount}&cu=INR`;
+    window.location.href = upiUri;
+    setTimeout(() => setPaymentSent(true), 1000);
+  };
+
+  const handleCopyUpi = () => {
+    if (!delivererUpi) return;
+    navigator.clipboard.writeText(delivererUpi);
+    toast.success("UPI ID copied to clipboard!");
   };
 
   const handleConfirmCompletion = async () => {
@@ -194,6 +201,18 @@ const OrderDetail = () => {
           {/* Pay & Confirm flow for requester */}
           {isRequester && order.status === "delivered" && (
             <div className="space-y-3">
+              {/* Recipient info */}
+              <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Pay to</p>
+                <p className="text-sm font-semibold text-foreground">{order.deliverer_name}</p>
+                {delivererUpi ? (
+                  <p className="text-sm text-muted-foreground font-mono">{delivererUpi}</p>
+                ) : (
+                  <p className="text-sm text-destructive">UPI ID not set by deliverer</p>
+                )}
+                <p className="text-lg font-bold text-foreground mt-1">₹{totalAmount}</p>
+              </div>
+
               {/* Rating */}
               <div>
                 <p className="text-sm font-medium text-foreground mb-1">Rate the deliverer:</p>
@@ -207,9 +226,14 @@ const OrderDetail = () => {
               </div>
 
               {!paymentSent ? (
-                <Button onClick={handlePayAndConfirm} className="w-full gradient-primary text-primary-foreground font-semibold text-base py-5">
-                  <CreditCard className="h-5 w-5 mr-2" /> Pay ₹{totalAmount} & Confirm
-                </Button>
+                <div className="space-y-2">
+                  <Button onClick={handlePayViaApp} disabled={!delivererUpi} className="w-full gradient-primary text-primary-foreground font-semibold text-base py-5">
+                    <CreditCard className="h-5 w-5 mr-2" /> Pay ₹{totalAmount} via UPI App
+                  </Button>
+                  <Button variant="outline" onClick={handleCopyUpi} disabled={!delivererUpi} className="w-full font-semibold">
+                    <Copy className="h-4 w-4 mr-2" /> Copy UPI ID
+                  </Button>
+                </div>
               ) : (
                 <Button onClick={handleConfirmCompletion} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-base py-5">
                   <CheckCircle className="h-5 w-5 mr-2" /> Payment Sent? Confirm Completion
