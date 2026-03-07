@@ -16,9 +16,10 @@ const Profile = () => {
   const [college, setCollege] = useState(profile?.college || "");
   const [phone, setPhone] = useState(profile?.phone || "");
   const [upiId, setUpiId] = useState(profile?.upiId || "");
+  const [bankingName, setBankingName] = useState(profile?.bankingName || "");
 
   const handleSave = async () => {
-    await updateUserProfile({ hostel, college, phone, upiId });
+    await updateUserProfile({ hostel, college, phone, upiId, bankingName });
     setEditing(false);
     toast.success("Profile updated!");
   };
@@ -79,6 +80,7 @@ const Profile = () => {
               <div><Label>Hostel / Room</Label><Input value={hostel} onChange={(e) => setHostel(e.target.value)} placeholder="Hostel 5, Room 302" /></div>
               <div><Label>Phone</Label><Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="9876543210" /></div>
               <div><Label>UPI ID</Label><Input value={upiId} onChange={(e) => setUpiId(e.target.value)} placeholder="yourname@upi" /></div>
+              <div><Label>Banking Name (as on UPI)</Label><Input value={bankingName} onChange={(e) => setBankingName(e.target.value)} placeholder="Full name as registered on UPI" /></div>
               <Button onClick={handleSave} className="w-full gradient-primary text-primary-foreground font-semibold">Save</Button>
             </div>
           ) : (
@@ -87,6 +89,7 @@ const Profile = () => {
               <div className="flex justify-between"><span className="text-muted-foreground">Hostel</span><span className="text-foreground">{profile.hostel || "Not set"}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Phone</span><span className="text-foreground">{profile.phone || "Not set"}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">UPI ID</span><span className="text-foreground">{profile.upiId || "Not set"}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Banking Name</span><span className="text-foreground">{profile.bankingName || "Not set"}</span></div>
             </div>
           )}
         </div>

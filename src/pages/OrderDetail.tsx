@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   subscribeToOrder, updateOrder, Order,
   subscribeToChat, sendMessage, ChatMessage,
-  rateUser, completeDelivery, getDelivererUpi,
+  rateUser, completeDelivery, getDelivererUpi, getDelivererBankingName,
 } from "@/lib/orders";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,7 @@ const OrderDetail = () => {
   const [rating, setRating] = useState(0);
   const [paymentSent, setPaymentSent] = useState(false);
   const [delivererUpi, setDelivererUpi] = useState<string | null>(null);
+  const [delivererBankingName, setDelivererBankingName] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -57,6 +58,7 @@ const OrderDetail = () => {
   useEffect(() => {
     if (order?.status === "delivered" && order.deliverer_id && isRequester) {
       getDelivererUpi(order.deliverer_id).then(setDelivererUpi).catch(() => setDelivererUpi(null));
+      getDelivererBankingName(order.deliverer_id).then(setDelivererBankingName).catch(() => setDelivererBankingName(null));
     }
   }, [order?.status, order?.deliverer_id]);
 
@@ -91,7 +93,8 @@ const OrderDetail = () => {
       toast.error("Deliverer has not set their UPI ID yet.");
       return;
     }
-    const upiUri = `upi://pay?pa=${encodeURIComponent(delivererUpi)}&pn=${encodeURIComponent(order.deliverer_name || "Deliverer")}&am=${totalAmount}&cu=INR`;
+    const payeeName = delivererBankingName || order.deliverer_name || "Deliverer";
+    const upiUri = `upi://pay?pa=${encodeURIComponent(delivererUpi)}&pn=${encodeURIComponent(payeeName)}&am=${totalAmount}&cu=INR`;
     window.location.href = upiUri;
     setTimeout(() => setPaymentSent(true), 1000);
   };
@@ -204,7 +207,7 @@ const OrderDetail = () => {
               {/* Recipient info */}
               <div className="bg-muted/50 rounded-lg p-3 space-y-1">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Pay to</p>
-                <p className="text-sm font-semibold text-foreground">{order.deliverer_name}</p>
+                <p className="text-sm font-semibold text-foreground">{delivererBankingName || order.deliverer_name}</p>
                 {delivererUpi ? (
                   <p className="text-sm text-muted-foreground font-mono">{delivererUpi}</p>
                 ) : (
