@@ -18,7 +18,6 @@ const Profile = () => {
   const [upiId, setUpiId] = useState(profile?.upiId || "");
   const [bankingName, setBankingName] = useState(profile?.bankingName || "");
 
-
   const handleSave = async () => {
     await updateUserProfile({ hostel, college, phone, upiId, bankingName });
     setEditing(false);
