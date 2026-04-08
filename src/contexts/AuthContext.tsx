@@ -53,9 +53,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchProfile = async (uid: string) => {
     const userRef = ref(db, `users/${uid}`);
-    const snap = await get(userRef);
-    if (snap.exists()) {
-      setProfile(snap.val() as UserProfile);
+    try {
+      const snap = await get(userRef);
+      if (snap.exists()) {
+        setProfile(snap.val() as UserProfile);
+      }
+    } catch (err) {
+      console.error("Failed to fetch profile:", err);
     }
     // Subscribe to realtime updates for reactive stats
     const handler = (snapshot: import("firebase/database").DataSnapshot) => {
