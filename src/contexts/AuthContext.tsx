@@ -53,9 +53,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchProfile = async (uid: string) => {
     const userRef = ref(db, `users/${uid}`);
-    const snap = await get(userRef);
-    if (snap.exists()) {
-      setProfile(snap.val() as UserProfile);
+    try {
+      const snap = await get(userRef);
+      if (snap.exists()) {
+        setProfile(snap.val() as UserProfile);
+      }
+    } catch (err) {
+      console.error("Failed to fetch profile:", err);
     }
     // Subscribe to realtime updates for reactive stats
     const handler = (snapshot: import("firebase/database").DataSnapshot) => {
@@ -73,17 +77,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     let unsubProfile: (() => void) | undefined;
+    // Safety timeout: never stay on loading for more than 5s
+    const timeout = setTimeout(() => setLoading(false), 5000);
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
-        unsubProfile = await fetchProfile(u.uid);
+        try {
+          unsubProfile = await fetchProfile(u.uid);
+        } catch (err) {
+          console.error("Profile fetch error:", err);
+        }
       } else {
         setProfile(null);
       }
       setLoading(false);
+      clearTimeout(timeout);
     });
     return () => {
       unsub();
+      clearTimeout(timeout);
       unsubProfile?.();
     };
   }, []);
