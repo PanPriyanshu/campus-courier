@@ -29,7 +29,17 @@ const Profile = () => {
     navigate("/");
   };
 
-  if (!profile) return <Layout><div className="flex items-center justify-center h-screen text-muted-foreground">Loading...</div></Layout>;
+  if (!profile) return (
+    <Layout>
+      <div className="flex flex-col items-center justify-center h-[60vh] text-muted-foreground gap-4">
+        <p>Could not load profile. Check your connection or Firebase rules.</p>
+        <Button variant="outline" onClick={() => window.location.reload()}>Retry</Button>
+        <Button variant="ghost" onClick={handleLogout} className="text-destructive">
+          <LogOut className="h-4 w-4 mr-1" /> Sign Out
+        </Button>
+      </div>
+    </Layout>
+  );
 
   return (
     <Layout>
