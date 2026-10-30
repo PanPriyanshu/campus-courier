@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   MapPin, User, Star, Send,
-  CheckCircle, Package, Truck, ArrowLeft, CreditCard, Copy,
+  CheckCircle, Package, Truck, ArrowLeft, CreditCard, Copy, CalendarClock,
 } from "lucide-react";
 import { toast } from "sonner";
 
