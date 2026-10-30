@@ -19,6 +19,7 @@ export interface Order {
   delivery_lng?: number;
   item_budget: number;
   delivery_fee: number;
+  scheduled_for?: number; // Unix ms — set only when the requester scheduled the delivery for later
   status: "open" | "accepted" | "picked_up" | "delivered" | "confirmed" | "cancelled";
   created_at: number;
   updated_at: number;
