@@ -51,6 +51,18 @@ const CreateOrder = () => {
       toast.error("Please fill all required fields");
       return;
     }
+    let scheduledFor: number | undefined;
+    if (scheduleLater) {
+      if (!scheduleDate || !scheduleTime) {
+        toast.error("Please pick a date and time for the scheduled delivery");
+        return;
+      }
+      scheduledFor = new Date(`${scheduleDate}T${scheduleTime}`).getTime();
+      if (!scheduledFor || scheduledFor <= Date.now()) {
+        toast.error("Scheduled time must be in the future");
+        return;
+      }
+    }
     setLoading(true);
     try {
       await createOrder({
@@ -65,6 +77,7 @@ const CreateOrder = () => {
         delivery_lng: deliveryLng,
         item_budget: Number(itemBudget),
         delivery_fee: Number(deliveryFee) || 30,
+        scheduled_for: scheduledFor,
       });
       toast.success("Errand posted!");
       navigate("/feed");
