@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, IndianRupee, Navigation } from "lucide-react";
+import { MapPin, IndianRupee, Navigation, CalendarClock } from "lucide-react";
 import { toast } from "sonner";
 
 const CreateOrder = () => {
@@ -24,6 +24,9 @@ const CreateOrder = () => {
   const [deliveryLng, setDeliveryLng] = useState<number | undefined>();
   const [itemBudget, setItemBudget] = useState("");
   const [deliveryFee, setDeliveryFee] = useState("");
+  const [scheduleLater, setScheduleLater] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [scheduleTime, setScheduleTime] = useState("");
 
   const useMyLocation = () => {
     if (!navigator.geolocation) { toast.error("Geolocation not supported"); return; }
