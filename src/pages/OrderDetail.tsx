@@ -158,6 +158,14 @@ const OrderDetail = () => {
             </div>
           </div>
 
+          {order.scheduled_for && (
+            <div className="flex items-center gap-2 text-sm bg-primary/5 rounded-lg p-3">
+              <CalendarClock className="h-4 w-4 text-primary" />
+              <span className="font-medium">Scheduled:</span>
+              <span className="text-foreground">{formatSchedule(order.scheduled_for)}</span>
+            </div>
+          )}
+
           {/* Payment */}
           <div className="bg-primary/5 rounded-lg p-3">
             <p className="text-2xl font-bold flex items-center gap-1 text-foreground">

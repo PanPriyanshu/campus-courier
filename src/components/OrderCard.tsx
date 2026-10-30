@@ -26,6 +26,12 @@ const OrderCard = ({ order }: { order: Order }) => {
         <Badge className={statusColors[order.status] || ""}>{order.status}</Badge>
       </div>
       <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{order.description}</p>
+      {order.scheduled_for && (
+        <div className="flex items-center gap-1 text-xs text-primary mb-3">
+          <CalendarClock className="h-3 w-3" />
+          <span>📅 Scheduled: {formatSchedule(order.scheduled_for)}</span>
+        </div>
+      )}
       <div className="flex items-center gap-3 text-xs text-muted-foreground">
         <span className="flex items-center gap-1">
           <MapPin className="h-3 w-3" /> {order.pickup_location}
