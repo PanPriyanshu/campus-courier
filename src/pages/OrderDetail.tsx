@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   subscribeToOrder, updateOrder, Order,
   subscribeToChat, sendMessage, ChatMessage,
-  rateUser, completeDelivery, getDelivererUpi, getDelivererBankingName,
+  rateUser, completeDelivery, getDelivererUpi, getDelivererBankingName, formatSchedule,
 } from "@/lib/orders";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   MapPin, User, Star, Send,
-  CheckCircle, Package, Truck, ArrowLeft, CreditCard, Copy,
+  CheckCircle, Package, Truck, ArrowLeft, CreditCard, Copy, CalendarClock,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -157,6 +157,14 @@ const OrderDetail = () => {
               <span className="text-foreground">{order.delivery_location}</span>
             </div>
           </div>
+
+          {order.scheduled_for && (
+            <div className="flex items-center gap-2 text-sm bg-primary/5 rounded-lg p-3">
+              <CalendarClock className="h-4 w-4 text-primary" />
+              <span className="font-medium">Scheduled:</span>
+              <span className="text-foreground">{formatSchedule(order.scheduled_for)}</span>
+            </div>
+          )}
 
           {/* Payment */}
           <div className="bg-primary/5 rounded-lg p-3">

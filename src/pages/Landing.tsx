@@ -27,8 +27,8 @@ const Landing = () => {
 
         {/* Title */}
         <h1 className="font-heading text-4xl font-bold text-center mb-3">
-          <span className="text-primary">Campus</span>{" "}
-          <span className="text-secondary">Errand</span>
+          <span className="text-primary">Zap</span>
+          <span className="text-secondary">IT</span>
         </h1>
 
         {/* Subtitle */}

@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { createOrder, CATEGORIES, suggestTip } from "@/lib/orders";
+import { createOrder, CATEGORIES, suggestTip, formatSchedule } from "@/lib/orders";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, IndianRupee, Navigation } from "lucide-react";
+import { MapPin, IndianRupee, Navigation, CalendarClock } from "lucide-react";
 import { toast } from "sonner";
 
 const CreateOrder = () => {
@@ -24,6 +24,9 @@ const CreateOrder = () => {
   const [deliveryLng, setDeliveryLng] = useState<number | undefined>();
   const [itemBudget, setItemBudget] = useState("");
   const [deliveryFee, setDeliveryFee] = useState("");
+  const [scheduleLater, setScheduleLater] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [scheduleTime, setScheduleTime] = useState("");
 
   const useMyLocation = () => {
     if (!navigator.geolocation) { toast.error("Geolocation not supported"); return; }
@@ -48,6 +51,18 @@ const CreateOrder = () => {
       toast.error("Please fill all required fields");
       return;
     }
+    let scheduledFor: number | undefined;
+    if (scheduleLater) {
+      if (!scheduleDate || !scheduleTime) {
+        toast.error("Please pick a date and time for the scheduled delivery");
+        return;
+      }
+      scheduledFor = new Date(`${scheduleDate}T${scheduleTime}`).getTime();
+      if (!scheduledFor || scheduledFor <= Date.now()) {
+        toast.error("Scheduled time must be in the future");
+        return;
+      }
+    }
     setLoading(true);
     try {
       await createOrder({
@@ -62,6 +77,7 @@ const CreateOrder = () => {
         delivery_lng: deliveryLng,
         item_budget: Number(itemBudget),
         delivery_fee: Number(deliveryFee) || 30,
+        scheduled_for: scheduledFor,
       });
       toast.success("Errand posted!");
       navigate("/feed");
@@ -134,6 +150,37 @@ const CreateOrder = () => {
               </div>
             </div>
           </div>
+          {/* Optional scheduling */}
+          <div className="space-y-2">
+            <Button
+              type="button"
+              variant={scheduleLater ? "default" : "outline"}
+              onClick={() => setScheduleLater((s) => !s)}
+              className={`w-full ${scheduleLater ? "gradient-primary text-primary-foreground" : ""}`}
+            >
+              <CalendarClock className="h-4 w-4 mr-2" />
+              {scheduleLater ? "Scheduled delivery: ON" : "Schedule for a later date/time (optional)"}
+            </Button>
+            {scheduleLater && (
+              <div className="grid grid-cols-2 gap-3 p-3 rounded-lg border border-border bg-primary/5">
+                <div className="space-y-2">
+                  <Label>Date</Label>
+                  <Input type="date" value={scheduleDate} min={new Date().toISOString().split("T")[0]} onChange={(e) => setScheduleDate(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Time</Label>
+                  <Input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} />
+                </div>
+                {scheduleDate && scheduleTime && (
+                  <p className="col-span-2 text-xs text-muted-foreground flex items-center gap-1">
+                    <CalendarClock className="h-3 w-3" />
+                    Deliver by {formatSchedule(new Date(`${scheduleDate}T${scheduleTime}`).getTime())}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
           <p className="text-xs text-muted-foreground">Suggested tip: ₹30–100 based on distance</p>
 
           <Button type="submit" className="w-full gradient-primary text-primary-foreground font-semibold" disabled={loading}>
