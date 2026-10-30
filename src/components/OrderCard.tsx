@@ -1,6 +1,6 @@
-import { MapPin, Clock, IndianRupee } from "lucide-react";
+import { MapPin, Clock, IndianRupee, CalendarClock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Order, CATEGORIES } from "@/lib/orders";
+import { Order, CATEGORIES, formatSchedule } from "@/lib/orders";
 import { Badge } from "@/components/ui/badge";
 
 const statusColors: Record<string, string> = {
