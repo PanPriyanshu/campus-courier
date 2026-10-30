@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   subscribeToOrder, updateOrder, Order,
   subscribeToChat, sendMessage, ChatMessage,
-  rateUser, completeDelivery, getDelivererUpi, getDelivererBankingName,
+  rateUser, completeDelivery, getDelivererUpi, getDelivererBankingName, formatSchedule,
 } from "@/lib/orders";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
