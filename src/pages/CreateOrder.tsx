@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { createOrder, CATEGORIES, suggestTip } from "@/lib/orders";
+import { createOrder, CATEGORIES, suggestTip, formatSchedule } from "@/lib/orders";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

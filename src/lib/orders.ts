@@ -175,3 +175,9 @@ export const getDistance = (lat1: number, lon1: number, lat2: number, lon2: numb
 export const suggestTip = (distanceKm: number): number => {
   return Math.max(30, Math.round(distanceKm * 20));
 };
+
+// Format a scheduled timestamp as e.g. "Sat, Oct 31 at 5:00 PM"
+export const formatSchedule = (ts: number): string => {
+  const d = new Date(ts);
+  return `${d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })} at ${d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true })}`;
+};
